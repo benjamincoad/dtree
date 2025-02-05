@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+import os
+from pathlib import Path
+import argparse
+
+
+def visualize_directory(directory, prefix="", is_last=True, ignore_patterns=None):
+    """
+    Recursively visualize a directory structure.
+
+    Args:
+        directory (Path): Path object of the directory to visualize
+        prefix (str): Prefix to use for the current line
+        is_last (bool): Whether this is the last item in the current directory
+        ignore_patterns (list): List of patterns to ignore (e.g., ['.git', '__pycache__'])
+    """
+    if ignore_patterns is None:
+        ignore_patterns = []
+
+    # Base prefix for current item
+    current_prefix = "└── " if is_last else "├── "
+
+    # Print the current directory/file name
+    print(f"{prefix}{current_prefix}{directory.name}")
+
+    # Prefix for children
+    children_prefix = prefix + ("    " if is_last else "│   ")
+
+    try:
+        # Get all items in the directory
+        items = [item for item in directory.iterdir() if not any(
+            pattern in str(item) for pattern in ignore_patterns
+        )]
+
+        # Sort items (directories first, then files)
+        items.sort(key=lambda x: (not x.is_dir(), x.name.lower()))
+
+        # Process all items except the last one
+        for item in items[:-1]:
+            if item.is_dir():
+                visualize_directory(item, children_prefix, False, ignore_patterns)
+            else:
+                print(f"{children_prefix}├── {item.name}")
+
+        # Process the last item
+        if items:
+            if items[-1].is_dir():
+                visualize_directory(items[-1], children_prefix, True, ignore_patterns)
+            else:
+                print(f"{children_prefix}└── {items[-1].name}")
+
+    except PermissionError:
+        print(f"{children_prefix}(Permission denied)")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Visualize directory structure as a tree")
+    parser.add_argument("path", nargs="?", default=".", help="Path to visualize (default: current directory)")
+    parser.add_argument("--ignore", "-i", nargs="+", default=[".git", "__pycache__", ".venv", "node_modules"],
+                        help="Patterns to ignore")
+
+    args = parser.parse_args()
+
+    start_path = Path(args.path).resolve()
+    print(f"\nDirectory Tree for: {start_path}\n")
+
+    visualize_directory(start_path, ignore_patterns=args.ignore)
+
+
+if __name__ == "__main__":
+    main()
